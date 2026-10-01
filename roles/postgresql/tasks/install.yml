@@ -1,0 +1,47 @@
+---
+# Package installation tasks for PostgreSQL
+
+- name: Install prerequisite packages
+  ansible.builtin.apt:
+    name: "{{ postgresql_os_packages | default(['ca-certificates', 'curl', 'gnupg', 'lsb-release']) }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Ensure apt keyring directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+  when: postgresql_use_pgdg_repo | bool
+
+- name: Download and dearmor PostgreSQL PGDG signing key
+  ansible.builtin.shell: |
+    set -o pipefail
+    curl -fsSL {{ postgresql_apt_key_url | quote }} | gpg --dearmor -o {{ postgresql_apt_key_path | quote }}
+  args:
+    creates: "{{ postgresql_apt_key_path }}"
+    executable: /bin/bash
+  when: postgresql_use_pgdg_repo | bool
+
+- name: Set permissions on PGDG signing key
+  ansible.builtin.file:
+    path: "{{ postgresql_apt_key_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: postgresql_use_pgdg_repo | bool
+
+- name: Add PostgreSQL PGDG apt repository
+  ansible.builtin.apt_repository:
+    repo: "{{ postgresql_apt_repo_url }}"
+    state: present
+    filename: postgresql
+    update_cache: true
+  when: postgresql_use_pgdg_repo | bool
+
+- name: Install PostgreSQL core packages
+  ansible.builtin.apt:
+    name: "{{ postgresql_packages + postgresql_extra_packages + postgresql_extension_packages }}"
+    state: present
+    update_cache: true

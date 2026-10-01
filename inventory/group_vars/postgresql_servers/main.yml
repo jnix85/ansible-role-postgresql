@@ -1,0 +1,48 @@
+---
+# Group variables for postgresql_servers
+postgresql_version: 16
+
+# Listen on all interfaces or specific management IP
+postgresql_listen_addresses: "*"
+postgresql_port: 5432
+
+# Performance & Tuning (Drop-in conf.d/99-ansible-custom.conf)
+postgresql_shared_buffers: "1GB"
+postgresql_work_mem: "32MB"
+postgresql_maintenance_work_mem: "256MB"
+postgresql_effective_cache_size: "3GB"
+postgresql_max_connections: 150
+postgresql_checkpoint_completion_target: 0.9
+postgresql_wal_buffers: "16MB"
+postgresql_default_statistics_target: 100
+postgresql_random_page_cost: 1.1
+postgresql_effective_io_concurrency: 200
+
+# Client Authentication Rules (pg_hba.conf)
+# Subnet 10.1.0.0/23 covers the Proxmox SDN VM legacy zone
+postgresql_hba_custom_rules:
+  - type: host
+    database: all
+    user: all
+    address: "10.1.0.0/23"
+    auth_method: scram-sha-256
+  - type: host
+    database: all
+    user: all
+    address: "127.0.0.1/32"
+    auth_method: scram-sha-256
+  - type: host
+    database: all
+    user: all
+    address: "::1/128"
+    auth_method: scram-sha-256
+
+# Automated Backup Settings
+postgresql_backup_enabled: true
+postgresql_backup_dir: "/var/backups/postgresql"
+postgresql_backup_retention_days: 7
+postgresql_backup_calendar: "*-*-* 02:30:00"
+
+# Optional Components
+postgresql_exporter_enabled: false
+postgresql_pgbouncer_enabled: false

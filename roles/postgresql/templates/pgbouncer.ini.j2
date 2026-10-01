@@ -1,0 +1,24 @@
+;; {{ ansible_managed }}
+;; PgBouncer configuration file
+
+[databases]
+* = host=127.0.0.1 port={{ postgresql_port }} auth_user=postgres
+
+[pgbouncer]
+logfile = /var/log/postgresql/pgbouncer.log
+pidfile = /var/run/postgresql/pgbouncer.pid
+listen_addr = {{ postgresql_pgbouncer_listen_addr }}
+listen_port = {{ postgresql_pgbouncer_port }}
+auth_type = {{ postgresql_pgbouncer_auth_type }}
+auth_file = {{ postgresql_pgbouncer_auth_file }}
+admin_users = {{ postgresql_pgbouncer_admin_users | join(', ') }}
+stats_users = {{ postgresql_pgbouncer_stats_users | join(', ') }}
+pool_mode = {{ postgresql_pgbouncer_pool_mode }}
+server_reset_query = DISCARD ALL
+max_client_conn = {{ postgresql_pgbouncer_max_client_conn }}
+default_pool_size = {{ postgresql_pgbouncer_default_pool_size }}
+reserve_pool_size = {{ postgresql_pgbouncer_reserve_pool_size }}
+reserve_pool_timeout = 5
+log_connections = 1
+log_disconnections = 1
+log_pooler_errors = 1

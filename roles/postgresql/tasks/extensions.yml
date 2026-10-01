@@ -1,0 +1,17 @@
+---
+# Declarative database extension provisioning tasks
+
+- name: Manage PostgreSQL extensions
+  community.postgresql.postgresql_ext:
+    name: "{{ item.name }}"
+    db: "{{ item.database | default(item.db) }}"
+    schema: "{{ item.schema | default(omit) }}"
+    version: "{{ item.version | default(omit) }}"
+    cascade: "{{ item.cascade | default(omit) }}"
+    state: "{{ item.state | default('present') }}"
+    port: "{{ postgresql_port }}"
+  loop: "{{ postgresql_extensions }}"
+  loop_control:
+    label: "{{ item.name }} in {{ item.database | default(item.db) }}"
+  become: true
+  become_user: "{{ postgresql_user }}"

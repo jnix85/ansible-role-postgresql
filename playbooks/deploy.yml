@@ -1,0 +1,8 @@
+---
+- name: Deploy PostgreSQL configuration, databases, and users
+  hosts: postgresql_servers
+  become: true
+  roles:
+    - role: postgresql
+      vars:
+        postgresql_install_packages: false

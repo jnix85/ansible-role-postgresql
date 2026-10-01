@@ -1,0 +1,58 @@
+---
+# Prometheus postgres_exporter installation and management
+
+- name: Create PostgreSQL monitoring user for postgres_exporter
+  community.postgresql.postgresql_user:
+    name: "{{ postgresql_exporter_user }}"
+    password: "{{ postgresql_exporter_password | default(omit) }}"
+    role_attr_flags: "LOGIN"
+    groups:
+      - "pg_monitor"
+    state: present
+    port: "{{ postgresql_port }}"
+  become: true
+  become_user: "{{ postgresql_user }}"
+  when: postgresql_replication_role != 'standby'
+
+- name: Download postgres_exporter binary archive
+  ansible.builtin.get_url:
+    url: "{{ postgresql_exporter_binary_url }}"
+    dest: "/tmp/postgres_exporter-{{ postgresql_exporter_version }}.tar.gz"
+    mode: "0644"
+
+- name: Extract postgres_exporter binary to /usr/local/bin
+  ansible.builtin.unarchive:
+    src: "/tmp/postgres_exporter-{{ postgresql_exporter_version }}.tar.gz"
+    dest: /usr/local/bin/
+    remote_src: true
+    extra_opts:
+      - --strip-components=1
+      - --wildcards
+      - "*/postgres_exporter"
+    mode: "0755"
+  notify: Restart postgres_exporter
+
+- name: Clean up temporary download archive
+  ansible.builtin.file:
+    path: "/tmp/postgres_exporter-{{ postgresql_exporter_version }}.tar.gz"
+    state: absent
+
+- name: Deploy postgres_exporter systemd service
+  ansible.builtin.template:
+    src: "postgres_exporter.service.j2"
+    dest: /etc/systemd/system/postgres_exporter.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd daemon
+    - Restart postgres_exporter
+
+- name: Flush handlers to register service
+  ansible.builtin.meta: flush_handlers
+
+- name: Ensure postgres_exporter service is enabled and started
+  ansible.builtin.systemd:
+    name: postgres_exporter
+    state: started
+    enabled: true

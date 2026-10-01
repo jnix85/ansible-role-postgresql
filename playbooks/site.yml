@@ -1,0 +1,6 @@
+---
+- name: Deploy and configure PostgreSQL
+  hosts: postgresql_servers
+  become: true
+  roles:
+    - role: postgresql

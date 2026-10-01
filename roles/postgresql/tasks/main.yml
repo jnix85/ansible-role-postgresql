@@ -1,0 +1,58 @@
+---
+# Entrypoint for postgresql role
+
+- name: Include OS-specific variables
+  ansible.builtin.include_vars: "{{ item }}"
+  with_first_found:
+    - files:
+        - "{{ ansible_distribution }}.yml"
+        - "{{ ansible_os_family }}.yml"
+        - "default.yml"
+      paths:
+        - "vars"
+      skip: true
+
+- name: Install PostgreSQL packages
+  ansible.builtin.include_tasks: install.yml
+  when: postgresql_install_packages | bool
+
+- name: Configure PostgreSQL server
+  ansible.builtin.include_tasks: configure.yml
+  when: postgresql_manage_configuration | bool
+
+- name: Manage PostgreSQL streaming replication
+  ansible.builtin.include_tasks: replication.yml
+  when: postgresql_manage_replication | bool
+
+- name: Manage PostgreSQL databases
+  ansible.builtin.include_tasks: databases.yml
+  when:
+    - postgresql_manage_databases | bool
+    - postgresql_databases | length > 0
+    - postgresql_replication_role != 'standby'
+
+- name: Manage PostgreSQL users and permissions
+  ansible.builtin.include_tasks: users.yml
+  when:
+    - postgresql_manage_users | bool
+    - postgresql_users | length > 0
+    - postgresql_replication_role != 'standby'
+
+- name: Manage PostgreSQL extensions
+  ansible.builtin.include_tasks: extensions.yml
+  when:
+    - postgresql_manage_extensions | bool
+    - postgresql_extensions | length > 0
+    - postgresql_replication_role != 'standby'
+
+- name: Manage PostgreSQL automated backup
+  ansible.builtin.include_tasks: backup.yml
+  when: postgresql_manage_backup | bool
+
+- name: Manage Prometheus postgres_exporter
+  ansible.builtin.include_tasks: exporter.yml
+  when: postgresql_exporter_enabled | bool
+
+- name: Manage PgBouncer connection pooler
+  ansible.builtin.include_tasks: pgbouncer.yml
+  when: postgresql_pgbouncer_enabled | bool

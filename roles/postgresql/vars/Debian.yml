@@ -1,0 +1,7 @@
+---
+# Debian-specific variables for postgresql role
+postgresql_os_packages:
+  - ca-certificates
+  - curl
+  - gnupg
+  - lsb-release

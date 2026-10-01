@@ -1,0 +1,37 @@
+---
+# Declarative user and role provisioning tasks
+
+- name: Manage PostgreSQL user roles
+  community.postgresql.postgresql_user:
+    name: "{{ item.name }}"
+    password: "{{ item.password | default(omit) }}"
+    encrypted: "{{ item.encrypted | default(omit) }}"
+    role_attr_flags: "{{ item.role_attr_flags | default(omit) }}"
+    db: "{{ item.db | default(omit) }}"
+    priv: "{{ item.priv | default(omit) }}"
+    conn_limit: "{{ item.conn_limit | default(omit) }}"
+    expires: "{{ item.expires | default(omit) }}"
+    state: "{{ item.state | default('present') }}"
+    port: "{{ postgresql_port }}"
+  loop: "{{ postgresql_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+  become: true
+  become_user: "{{ postgresql_user }}"
+  no_log: "{{ false if (postgresql_debug | default(false)) else true }}"
+
+- name: Manage granular database privileges
+  community.postgresql.postgresql_privs:
+    db: "{{ item.1.name }}"
+    roles: "{{ item.0.name }}"
+    privs: "{{ item.1.privs | default('ALL') }}"
+    type: "{{ item.1.type | default('database') }}"
+    objs: "{{ item.1.objs | default(omit) }}"
+    schema: "{{ item.1.schema | default(omit) }}"
+    state: "{{ item.1.state | default('present') }}"
+    port: "{{ postgresql_port }}"
+  loop: "{{ postgresql_users | subelements('databases', skip_missing=True) }}"
+  loop_control:
+    label: "{{ item.0.name }} -> {{ item.1.name }}"
+  become: true
+  become_user: "{{ postgresql_user }}"

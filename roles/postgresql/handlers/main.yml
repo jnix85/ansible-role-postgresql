@@ -1,0 +1,36 @@
+---
+# Handlers for postgresql role
+
+- name: Restart postgresql
+  ansible.builtin.systemd:
+    name: "{{ postgresql_service_name }}"
+    state: restarted
+
+- name: Reload postgresql
+  ansible.builtin.systemd:
+    name: "{{ postgresql_service_name }}"
+    state: reloaded
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart postgresql-backup-timer
+  ansible.builtin.systemd:
+    name: postgresql-backup.timer
+    state: restarted
+
+- name: Restart pgbouncer
+  ansible.builtin.systemd:
+    name: pgbouncer
+    state: restarted
+
+- name: Reload pgbouncer
+  ansible.builtin.systemd:
+    name: pgbouncer
+    state: reloaded
+
+- name: Restart postgres_exporter
+  ansible.builtin.systemd:
+    name: postgres_exporter
+    state: restarted

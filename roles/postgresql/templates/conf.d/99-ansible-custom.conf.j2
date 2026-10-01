@@ -1,0 +1,56 @@
+# {{ ansible_managed }}
+# PostgreSQL Custom Configuration managed by Ansible
+
+# Connections and Networking
+listen_addresses = '{{ postgresql_listen_addresses }}'
+port = {{ postgresql_port }}
+max_connections = {{ postgresql_max_connections }}
+superuser_reserved_connections = {{ postgresql_superuser_reserved_connections }}
+password_encryption = '{{ postgresql_password_encryption }}'
+
+# Memory
+shared_buffers = {{ postgresql_shared_buffers }}
+work_mem = {{ postgresql_work_mem }}
+maintenance_work_mem = {{ postgresql_maintenance_work_mem }}
+effective_cache_size = {{ postgresql_effective_cache_size }}
+temp_buffers = {{ postgresql_temp_buffers }}
+
+# Write-Ahead Log (WAL) & Checkpoints
+wal_level = {{ postgresql_wal_level }}
+wal_buffers = {{ postgresql_wal_buffers }}
+checkpoint_completion_target = {{ postgresql_checkpoint_completion_target }}
+checkpoint_timeout = {{ postgresql_checkpoint_timeout }}
+min_wal_size = {{ postgresql_min_wal_size }}
+max_wal_size = {{ postgresql_max_wal_size }}
+max_wal_senders = {{ postgresql_max_wal_senders }}
+max_replication_slots = {{ postgresql_max_replication_slots }}
+
+# Query Planner & Cost
+random_page_cost = {{ postgresql_random_page_cost }}
+effective_io_concurrency = {{ postgresql_effective_io_concurrency }}
+default_statistics_target = {{ postgresql_default_statistics_target }}
+
+# Shared Preload Libraries
+{% if postgresql_shared_preload_libraries | length > 0 %}
+shared_preload_libraries = '{{ postgresql_shared_preload_libraries | join(",") }}'
+{% endif %}
+
+# Extension: pg_stat_statements
+{% if 'pg_stat_statements' in postgresql_shared_preload_libraries %}
+pg_stat_statements.max = {{ postgresql_pg_stat_statements_max }}
+pg_stat_statements.track = '{{ postgresql_pg_stat_statements_track }}'
+{% endif %}
+
+# Logging
+timezone = '{{ postgresql_timezone }}'
+log_destination = '{{ postgresql_log_destination }}'
+logging_collector = {{ 'on' if postgresql_logging_collector else 'off' }}
+log_min_messages = {{ postgresql_log_min_messages }}
+log_min_error_statement = {{ postgresql_log_min_error_statement }}
+log_min_duration_statement = {{ postgresql_log_min_duration_statement }}
+log_line_prefix = '{{ postgresql_log_line_prefix }}'
+
+# Custom Parameters
+{% for key, val in postgresql_custom_conf_parameters.items() %}
+{{ key }} = {{ val }}
+{% endfor %}

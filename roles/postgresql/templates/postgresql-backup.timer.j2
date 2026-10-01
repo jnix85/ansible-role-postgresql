@@ -1,0 +1,12 @@
+[Unit]
+Description=Schedule automated PostgreSQL backups
+RefuseManualStart=no
+RefuseManualStop=no
+
+[Timer]
+Persistent=true
+OnCalendar={{ postgresql_backup_calendar }}
+Unit=postgresql-backup.service
+
+[Install]
+WantedBy=timers.target

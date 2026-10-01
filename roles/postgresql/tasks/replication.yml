@@ -1,0 +1,78 @@
+---
+# Streaming replication tasks for PostgreSQL
+
+- name: Primary node replication setup
+  when: postgresql_replication_role == 'primary'
+  block:
+    - name: Create PostgreSQL replication user on primary
+      community.postgresql.postgresql_user:
+        name: "{{ postgresql_replication_user }}"
+        password: "{{ postgresql_replication_password }}"
+        role_attr_flags: "REPLICATION,LOGIN"
+        state: present
+      become: true
+      become_user: "{{ postgresql_user }}"
+
+    - name: Create physical replication slot on primary
+      community.postgresql.postgresql_slot:
+        name: "{{ postgresql_replication_slot_name }}"
+        slot_type: physical
+        state: present
+      become: true
+      become_user: "{{ postgresql_user }}"
+
+- name: Standby node replication setup
+  when: postgresql_replication_role == 'standby'
+  block:
+    - name: Check if standby node data directory is already initialized
+      ansible.builtin.stat:
+        path: "{{ postgresql_data_dir }}/PG_VERSION"
+      register: postgresql_standby_initialized
+
+    - name: Bootstrap standby via pg_basebackup from primary
+      when: not postgresql_standby_initialized.stat.exists
+      block:
+        - name: Stop PostgreSQL service before initial basebackup
+          ansible.builtin.systemd:
+            name: "{{ postgresql_service_name }}"
+            state: stopped
+
+        - name: Ensure standby data directory exists and is empty
+          ansible.builtin.file:
+            path: "{{ postgresql_data_dir }}"
+            state: directory
+            owner: "{{ postgresql_user }}"
+            group: "{{ postgresql_group }}"
+            mode: "0700"
+
+        - name: Execute pg_basebackup from primary
+          ansible.builtin.command: >
+            pg_basebackup
+            -h {{ postgresql_replication_primary_host }}
+            -p {{ postgresql_replication_primary_port }}
+            -U {{ postgresql_replication_user }}
+            -D {{ postgresql_data_dir }}
+            -Fp
+            -Xs
+            -R
+            -S {{ postgresql_replication_slot_name }}
+            -v
+          environment:
+            PGPASSWORD: "{{ postgresql_replication_password }}"
+          become: true
+          become_user: "{{ postgresql_user }}"
+          changed_when: true
+
+        - name: Ensure correct permissions on data directory after basebackup
+          ansible.builtin.file:
+            path: "{{ postgresql_data_dir }}"
+            owner: "{{ postgresql_user }}"
+            group: "{{ postgresql_group }}"
+            mode: "0700"
+            recurse: true
+
+        - name: Start PostgreSQL standby service
+          ansible.builtin.systemd:
+            name: "{{ postgresql_service_name }}"
+            state: started
+            enabled: true

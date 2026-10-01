@@ -1,0 +1,19 @@
+# {{ ansible_managed }}
+# PostgreSQL Client Authentication Configuration File (pg_hba.conf)
+
+# TYPE    DATABASE        USER            ADDRESS                 METHOD
+
+{% if postgresql_manage_replication | bool or postgresql_replication_role == 'primary' %}
+# Replication rules
+host      replication     {{ postgresql_replication_user }}       all                     scram-sha-256
+{% endif %}
+
+# Custom rules
+{% for rule in postgresql_hba_custom_rules %}
+{{ "%-9s %-15s %-15s %-23s %s" | format(rule.type, rule.database, rule.user, rule.address | default(''), rule.auth_method) }}
+{% endfor %}
+
+# Default rules
+{% for rule in postgresql_hba_default_rules %}
+{{ "%-9s %-15s %-15s %-23s %s" | format(rule.type, rule.database, rule.user, rule.address | default(''), rule.auth_method) }}
+{% endfor %}

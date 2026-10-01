@@ -1,0 +1,32 @@
+---
+galaxy_info:
+  role_name: postgresql
+  namespace: clawduino
+  author: Jason Parks
+  description: >-
+    Comprehensive Ansible role for installing, configuring, hardening, and managing PostgreSQL,
+    streaming replication, backups, PgBouncer, and postgres_exporter.
+  company: clawduino
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+        - trixie
+        - all
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+        - all
+  galaxy_tags:
+    - database
+    - postgresql
+    - postgres
+    - replication
+    - pgbouncer
+    - backup
+    - monitoring
+
+dependencies: []

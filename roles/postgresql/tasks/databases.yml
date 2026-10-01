@@ -1,0 +1,18 @@
+---
+# Declarative database provisioning tasks
+
+- name: Manage PostgreSQL databases
+  community.postgresql.postgresql_db:
+    name: "{{ item.name }}"
+    owner: "{{ item.owner | default(omit) }}"
+    encoding: "{{ item.encoding | default('UTF8') }}"
+    lc_collate: "{{ item.lc_collate | default(omit) }}"
+    lc_ctype: "{{ item.lc_ctype | default(omit) }}"
+    template: "{{ item.template | default(omit) }}"
+    state: "{{ item.state | default('present') }}"
+    port: "{{ postgresql_port }}"
+  loop: "{{ postgresql_databases }}"
+  loop_control:
+    label: "{{ item.name }}"
+  become: true
+  become_user: "{{ postgresql_user }}"

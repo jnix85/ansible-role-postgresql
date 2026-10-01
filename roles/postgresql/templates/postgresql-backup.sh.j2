@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# {{ ansible_managed }}
+# Automated PostgreSQL Backup Script
+
+set -euo pipefail
+
+BACKUP_DIR="{{ postgresql_backup_dir }}"
+RETENTION_DAYS="{{ postgresql_backup_retention_days }}"
+BACKUP_TYPE="{{ postgresql_backup_type }}"
+PGPORT="{{ postgresql_port }}"
+TIMESTAMP="$(date +"%Y%m%d_%H%M%S")"
+
+log() {
+    echo "[$(date -Iseconds)] $*"
+}
+
+log "Starting PostgreSQL backup routine..."
+mkdir -p "${BACKUP_DIR}"
+
+{% if postgresql_backup_type == 'all' %}
+BACKUP_FILE="${BACKUP_DIR}/pg_all_${TIMESTAMP}.sql.gz"
+log "Executing pg_dumpall to ${BACKUP_FILE}..."
+
+if pg_dumpall -p "${PGPORT}" --clean --if-exists | gzip -9 > "${BACKUP_FILE}"; then
+    SIZE=$(du -h "${BACKUP_FILE}" | cut -f1)
+    sha256sum "${BACKUP_FILE}" > "${BACKUP_FILE}.sha256"
+    log "Backup successful: ${BACKUP_FILE} (${SIZE})"
+else
+    log "ERROR: Backup failed for pg_dumpall" >&2
+    rm -f "${BACKUP_FILE}"
+    exit 1
+fi
+
+{% else %}
+# Individual database backups
+EXCLUDES=({% for db in postgresql_backup_exclude_databases %}"{{ db }}" {% endfor %})
+
+DATABASES=$(psql -p "${PGPORT}" -At -c "SELECT datname FROM pg_database WHERE datistemplate = false ORDER BY datname;")
+
+for DB in ${DATABASES}; do
+    # Check if database is excluded
+    SKIP=false
+    for EXCLUDE in "${EXCLUDES[@]}"; do
+        if [[ "${DB}" == "${EXCLUDE}" ]]; then
+            SKIP=true
+            break
+        fi
+    done
+
+    if [[ "${SKIP}" == "true" ]]; then
+        log "Skipping excluded database: ${DB}"
+        continue
+    fi
+
+    DB_BACKUP_FILE="${BACKUP_DIR}/pg_${DB}_${TIMESTAMP}.sql.gz"
+    log "Dumping database '${DB}' to ${DB_BACKUP_FILE}..."
+
+    if pg_dump -p "${PGPORT}" --clean --if-exists "${DB}" | gzip -9 > "${DB_BACKUP_FILE}"; then
+        SIZE=$(du -h "${DB_BACKUP_FILE}" | cut -f1)
+        sha256sum "${DB_BACKUP_FILE}" > "${DB_BACKUP_FILE}.sha256"
+        log "Database '${DB}' backup successful (${SIZE})"
+    else
+        log "ERROR: Backup failed for database '${DB}'" >&2
+        rm -f "${DB_BACKUP_FILE}"
+        exit 1
+    fi
+done
+
+# Also take a globals-only dump for roles and tablespaces
+GLOBALS_FILE="${BACKUP_DIR}/pg_globals_${TIMESTAMP}.sql.gz"
+log "Dumping cluster globals to ${GLOBALS_FILE}..."
+if pg_dumpall -p "${PGPORT}" --globals-only | gzip -9 > "${GLOBALS_FILE}"; then
+    sha256sum "${GLOBALS_FILE}" > "${GLOBALS_FILE}.sha256"
+    log "Cluster globals backup successful"
+else
+    log "WARNING: Failed to dump cluster globals" >&2
+fi
+{% endif %}
+
+# Retention pruning
+log "Pruning backups older than ${RETENTION_DAYS} days in ${BACKUP_DIR}..."
+find "${BACKUP_DIR}" -type f \( -name "pg_*.sql.gz" -o -name "pg_*.sha256" \) -mtime +"${RETENTION_DAYS}" -print -delete
+
+log "PostgreSQL backup routine completed successfully."

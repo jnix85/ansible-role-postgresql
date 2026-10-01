@@ -1,0 +1,13 @@
+---
+- name: Trigger On-Demand PostgreSQL Backup
+  hosts: postgresql_servers
+  become: true
+  tasks:
+    - name: Execute postgresql backup script
+      ansible.builtin.command: /usr/local/bin/postgresql-backup.sh
+      register: postgresql_manual_backup
+      changed_when: true
+
+    - name: Output backup status
+      ansible.builtin.debug:
+        var: postgresql_manual_backup.stdout_lines

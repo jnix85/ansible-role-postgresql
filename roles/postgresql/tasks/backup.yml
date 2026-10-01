@@ -1,0 +1,47 @@
+---
+# Automated backup tasks for PostgreSQL
+
+- name: Ensure backup directory exists
+  ansible.builtin.file:
+    path: "{{ postgresql_backup_dir }}"
+    state: directory
+    owner: "{{ postgresql_user }}"
+    group: "{{ postgresql_group }}"
+    mode: "0750"
+
+- name: Deploy PostgreSQL backup script
+  ansible.builtin.template:
+    src: "postgresql-backup.sh.j2"
+    dest: /usr/local/bin/postgresql-backup.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy PostgreSQL backup systemd service
+  ansible.builtin.template:
+    src: "postgresql-backup.service.j2"
+    dest: /etc/systemd/system/postgresql-backup.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd daemon
+
+- name: Deploy PostgreSQL backup systemd timer
+  ansible.builtin.template:
+    src: "postgresql-backup.timer.j2"
+    dest: /etc/systemd/system/postgresql-backup.timer
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd daemon
+    - Restart postgresql-backup-timer
+
+- name: Flush handlers to register systemd units
+  ansible.builtin.meta: flush_handlers
+
+- name: Ensure backup timer is enabled and started
+  ansible.builtin.systemd:
+    name: postgresql-backup.timer
+    state: started
+    enabled: true

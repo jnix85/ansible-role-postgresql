@@ -1,0 +1,16 @@
+[Unit]
+Description=Prometheus PostgreSQL Server Exporter
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User={{ postgresql_user }}
+Group={{ postgresql_group }}
+Environment="DATA_SOURCE_NAME=postgresql://{{ postgresql_exporter_user }}{% if postgresql_exporter_password %}:{{ postgresql_exporter_password }}{% endif %}@127.0.0.1:{{ postgresql_port }}/postgres?sslmode=disable"
+ExecStart=/usr/local/bin/postgres_exporter --web.listen-address={{ postgresql_exporter_listen_address }}:{{ postgresql_exporter_port }}
+Restart=always
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

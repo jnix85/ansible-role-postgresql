@@ -1,0 +1,54 @@
+---
+# PgBouncer connection pooler installation and configuration
+
+- name: Install PgBouncer package
+  ansible.builtin.apt:
+    name: pgbouncer
+    state: present
+    update_cache: true
+
+- name: Ensure PgBouncer configuration directory exists
+  ansible.builtin.file:
+    path: /etc/pgbouncer
+    state: directory
+    owner: "{{ postgresql_user }}"
+    group: "{{ postgresql_group }}"
+    mode: "0750"
+
+- name: Ensure PostgreSQL runtime directories exist for PgBouncer
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ postgresql_user }}"
+    group: "{{ postgresql_group }}"
+    mode: "0755"
+  loop:
+    - /var/log/postgresql
+    - /var/run/postgresql
+
+- name: Deploy PgBouncer configuration
+  ansible.builtin.template:
+    src: "pgbouncer.ini.j2"
+    dest: /etc/pgbouncer/pgbouncer.ini
+    owner: "{{ postgresql_user }}"
+    group: "{{ postgresql_group }}"
+    mode: "0640"
+  notify: Restart pgbouncer
+
+- name: Deploy PgBouncer userlist
+  ansible.builtin.template:
+    src: "pgbouncer-userlist.txt.j2"
+    dest: "{{ postgresql_pgbouncer_auth_file }}"
+    owner: "{{ postgresql_user }}"
+    group: "{{ postgresql_group }}"
+    mode: "0640"
+  notify: Reload pgbouncer
+
+- name: Flush handlers to register PgBouncer configuration
+  ansible.builtin.meta: flush_handlers
+
+- name: Ensure PgBouncer service is enabled and started
+  ansible.builtin.systemd:
+    name: pgbouncer
+    state: started
+    enabled: true

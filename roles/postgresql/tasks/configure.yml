@@ -1,0 +1,57 @@
+---
+# Server configuration tasks for PostgreSQL
+
+- name: Ensure conf.d directory exists
+  ansible.builtin.file:
+    path: "{{ postgresql_conf_d_dir }}"
+    state: directory
+    owner: "{{ postgresql_user }}"
+    group: "{{ postgresql_group }}"
+    mode: "0750"
+
+- name: Ensure include_dir is active in postgresql.conf
+  ansible.builtin.lineinfile:
+    path: "{{ postgresql_config_dir }}/postgresql.conf"
+    regexp: "^#?include_dir\\s*="
+    line: "include_dir = 'conf.d'"
+    state: present
+  notify: Restart postgresql
+
+- name: Deploy custom PostgreSQL configuration drop-in
+  ansible.builtin.template:
+    src: "conf.d/99-ansible-custom.conf.j2"
+    dest: "{{ postgresql_conf_d_dir }}/99-ansible-custom.conf"
+    owner: "{{ postgresql_user }}"
+    group: "{{ postgresql_group }}"
+    mode: "0640"
+  notify: Restart postgresql
+
+- name: Deploy pg_hba.conf
+  ansible.builtin.template:
+    src: "pg_hba.conf.j2"
+    dest: "{{ postgresql_config_dir }}/pg_hba.conf"
+    owner: "{{ postgresql_user }}"
+    group: "{{ postgresql_group }}"
+    mode: "0640"
+  notify: Reload postgresql
+  when: postgresql_manage_hba | bool
+
+- name: Deploy pg_ident.conf
+  ansible.builtin.template:
+    src: "pg_ident.conf.j2"
+    dest: "{{ postgresql_config_dir }}/pg_ident.conf"
+    owner: "{{ postgresql_user }}"
+    group: "{{ postgresql_group }}"
+    mode: "0640"
+  notify: Reload postgresql
+  when: postgresql_manage_ident | bool
+
+- name: Flush handlers to apply configuration before subsequent tasks
+  ansible.builtin.meta: flush_handlers
+
+- name: Ensure PostgreSQL service is managed and in target state
+  ansible.builtin.systemd:
+    name: "{{ postgresql_service_name }}"
+    state: "{{ postgresql_service_state }}"
+    enabled: "{{ postgresql_service_enabled }}"
+  when: postgresql_manage_service | bool

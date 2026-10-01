@@ -1,0 +1,8 @@
+# {{ ansible_managed }}
+# User authentication list for PgBouncer
+{% for user in postgresql_pgbouncer_admin_users %}
+"{{ user }}" ""
+{% endfor %}
+{% for user in postgresql_pgbouncer_users %}
+"{{ user.username }}" "{{ user.password }}"
+{% endfor %}
